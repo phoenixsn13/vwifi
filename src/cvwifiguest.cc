@@ -132,13 +132,36 @@ int VWifiGuest::process_messages(struct nl_msg *msg, void *arg)
 	msg_len = nlh->nlmsg_len;
 
 
-	if (nlh->nlmsg_type != m_family_id) 
+	if (nlh->nlmsg_type != m_family_id){
 		return 1;
+	}
 	
-	if (nlh->nlmsg_type == NLMSG_ERROR) {
+	else if (nlh->nlmsg_type == NLMSG_ERROR) {
 		err = (struct nlmsgerr *) nlmsg_data(nlh);
+		std::cout << "nlmsg error" << err << std::endl ; // a enlever	
+
 		return err->error ;
 	}
+
+	
+//#ifdef _DEBUG	
+	std::cout << "Receive " << msg_len <<  " bytes msg from hwsim" << std::endl ;
+	
+	if (nlh->nlmsg_type == NLMSG_NOOP)
+		std::cout << "NLMSG_NOOP" << std::endl;
+
+	else if (nlh->nlmsg_type == NLMSG_DONE)
+		std::cout << "NLMSG_DONE" << std::endl ;
+
+	else if (nlh->nlmsg_type == NLMSG_MIN_TYPE)
+		std::cout << "NLMSG_MIN_TYPE" << std::endl ;
+
+	else if (nlh->nlmsg_type == m_family_id)
+		std::cout << "MAC80211_HWSIM" << std::endl;
+
+	else
+		std::cout << "NLMSG: " << nlh->nlmsg_type << std::endl;
+//#endif
 
 	
 	/* ignore if anything other than a frame
@@ -154,8 +177,10 @@ int VWifiGuest::process_messages(struct nl_msg *msg, void *arg)
 	
 
 	/* this check was duplicated below in a second if statement, now gone */
-	if (!(attrs[HWSIM_ATTR_ADDR_TRANSMITTER]))
+	if (!(attrs[HWSIM_ATTR_ADDR_TRANSMITTER])){
+		std::cout << "not HWSIM_ATTR_ADDR_TRANSMITTER" << std::endl ; // a enlever	
 		return 1;
+	}
 
 	/* we get hwsim mac (id)*/
 	src = (struct ether_addr *)nla_data(attrs[HWSIM_ATTR_ADDR_TRANSMITTER]);
@@ -218,6 +243,10 @@ int VWifiGuest::process_messages(struct nl_msg *msg, void *arg)
 
 	/* copy dst address from frame */
 	memcpy(&framedst, data + 4, ETH_ALEN);
+
+	mac_address_to_string(addr, &framedst);
+	std::cout << "Destination : " << addr << std::endl;
+
 
 	/* compare tx src to frame src, update TX src ATTR in msg if needed */
 	/* if we rebuild the nl msg, this can change */
