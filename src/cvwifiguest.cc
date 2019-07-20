@@ -138,13 +138,13 @@ int VWifiGuest::process_messages(struct nl_msg *msg, void *arg)
 	
 	else if (nlh->nlmsg_type == NLMSG_ERROR) {
 		err = (struct nlmsgerr *) nlmsg_data(nlh);
-		std::cout << "nlmsg error" << err << std::endl ; // a enlever	
+		//std::cout << "nlmsg error" << err << std::endl ; // a enlever	
 
 		return err->error ;
 	}
 
 	
-//#ifdef _DEBUG	
+#ifdef _DEBUG	
 	std::cout << "Receive " << msg_len <<  " bytes msg from hwsim" << std::endl ;
 	
 	if (nlh->nlmsg_type == NLMSG_NOOP)
@@ -161,7 +161,7 @@ int VWifiGuest::process_messages(struct nl_msg *msg, void *arg)
 
 	else
 		std::cout << "NLMSG: " << nlh->nlmsg_type << std::endl;
-//#endif
+#endif
 
 	
 	/* ignore if anything other than a frame
@@ -244,8 +244,8 @@ int VWifiGuest::process_messages(struct nl_msg *msg, void *arg)
 	/* copy dst address from frame */
 	memcpy(&framedst, data + 4, ETH_ALEN);
 
-	mac_address_to_string(addr, &framedst);
-	std::cout << "Destination : " << addr << std::endl;
+//	mac_address_to_string(addr, &framedst);
+//	std::cout << "Destination : " << addr << std::endl;
 
 
 	/* compare tx src to frame src, update TX src ATTR in msg if needed */
@@ -441,6 +441,89 @@ int VWifiGuest::send_cloned_frame_msg(struct ether_addr *dst, char *data, int da
 }
 
 
+void VWifiGuest::send_ack_to_server(uint32_t freq, struct ether_addr *src,struct ether_addr *dst)
+{
+	int rc;
+	struct nl_msg *msg;
+	int msg_len;
+	int ack_size;
+	struct ieee80211_hdr *hdr80211;
+	struct nlmsghdr *nlh;
+
+	/* we dont need to the full 30 bytes of struct ieee80211_hdr */
+	ack_size = 10;
+
+	hdr80211 = (struct ieee80211_hdr *) malloc(ack_size);
+	std::memset(hdr80211, 0, ack_size);
+
+	hdr80211->frame_control = IEEE80211_FTYPE_CTL | IEEE80211_STYPE_ACK;
+	std::memcpy(hdr80211->addr1, src, ETH_ALEN);
+
+	msg = nlmsg_alloc();
+
+	if (!msg) {
+		std::cerr << "Error allocating new message MSG!" << std::endl;
+		free(hdr80211);
+		return;
+	}
+
+	/* may need to spoof so it loos to welled like it came from
+	 * the hwsim driver on another system? maybe not as long as it
+	 * shows up in a tcpdump
+	 */
+	if (m_family_id < 0){
+	
+		free(hdr80211);
+		nlmsg_free(msg);
+		return ;
+	}
+
+	genlmsg_put(msg, NL_AUTO_PID, NL_AUTO_SEQ, m_family_id, 0, NLM_F_REQUEST, HWSIM_CMD_FRAME, VERSION_NR);
+
+	/* set source address */
+	rc = nla_put(msg, HWSIM_ATTR_ADDR_TRANSMITTER,sizeof(struct ether_addr), dst);
+	rc = nla_put(msg, HWSIM_ATTR_FRAME, ack_size,hdr80211);
+
+	if (freq)
+		rc = nla_put_u32(msg, HWSIM_ATTR_FREQ, freq);
+
+	/* TODO: add COOKIE and TX info, signal, rate */
+
+	if (rc != 0) {
+		std::cerr << "Error filling payload" << std::endl;
+		free(hdr80211);
+		nlmsg_free(msg);
+		return ;
+	}
+
+	nlh = nlmsg_hdr(msg);
+	msg_len = nlh->nlmsg_len;
+
+	
+	/* send frame to server */
+	
+	int value=_vsocket.Send((char*)nlh,msg_len);
+
+	if (value == SOCKET_DISCONNECT)
+		manage_server_crash();
+
+	if( value == SOCKET_ERROR )
+	
+	{
+		std::cerr << "socket.Send error" <<std::endl;
+		free(hdr80211);
+		nlmsg_free(msg);
+		return;
+	}
+
+
+	free(hdr80211);
+	nlmsg_free(msg);
+
+}
+
+
+
 
 
 void VWifiGuest::recv_from_server(){
@@ -526,43 +609,51 @@ void VWifiGuest::recv_from_server(){
 	/* we extract and handle a distance here */
 
 
-#ifdef _DEBUG
-
-
 	struct ether_addr *src = nullptr;
-	struct ether_addr framesrc;
-	
 	/* copy hwsim id src */
 	src = (struct ether_addr *)nla_data(attrs[HWSIM_ATTR_ADDR_TRANSMITTER]);
-	mac_address_to_string(addr, src);
-	std::cout << "src hwsim: " << addr << std::endl ;
 
-	/* copy mac src  address from frame */
-	memcpy(&framesrc, data + 10, ETH_ALEN);
-	mac_address_to_string(addr, &framesrc);
-	std::cout << "frame src:" << addr << std::endl;
-#endif
-
+	struct ether_addr framesrc;
 	/* copy mac dst address from frame */
 	memcpy(&framedst, data + 4, ETH_ALEN);
 
+	memcpy(&framesrc, data + 10, ETH_ALEN);
+	/* copy mac dst address from frame */
+	memcpy(&framedst, data + 4, ETH_ALEN);
+
+
 #ifdef _DEBUG
+
+	mac_address_to_string(addr, src);
+	std::cout << "src hwsim: " << addr << std::endl ;
+
+	mac_address_to_string(addr, &framesrc);
+	std::cout << "frame src:" << addr << std::endl;
+	
 	mac_address_to_string(addr, &framedst);
 	std::cout << "frame dst:" << addr << std::endl;
 #endif
 
 	std::vector<WirelessDevice> inets = _list_winterfaces.list_devices();
 
-
-
 	for (auto & inet : inets)
 	{
 		
-
+		struct ether_addr macaddr = inet.getMacaddr();
 		struct ether_addr macdsthwsim = inet.getMachwsim();
-		
-		send_cloned_frame_msg(&macdsthwsim, data, data_len,rate_idx, signal, freq);
 
+	
+		//mac_address_to_string(addr, &macdsthwsim);
+		//std::cout << "forward to : " << addr << std::endl;
+
+		send_cloned_frame_msg(&macdsthwsim, data, data_len,rate_idx, signal, freq);
+			
+		if ((std::memcmp(&framedst, &macaddr, ETH_ALEN) == 0) && (nlh->nlmsg_len != 56)) {
+
+			//std::cout << "framedst == macaddr" << std::endl ;
+			send_ack_to_server(freq, &framesrc, &macdsthwsim); // logiquement c macdsthwsim
+	
+		}
 	
 	}
 
