@@ -693,21 +693,33 @@ void VWifiGuest::recv_from_server(){
 	for (auto & inet : inets)
 	{
 		
-		//struct ether_addr macaddr = inet.getMacaddr();
+		struct ether_addr macaddr = inet.getMacaddr();
 		struct ether_addr macdsthwsim = inet.getMachwsim();
+
+		/* compare frame dst to nlmsg src */
+		if (std::memcmp(src, &macaddr, sizeof(struct ether_addr)) == 0) {
+			/* this radio sent the frame, skip it */
+			continue;
+		}
 
 	
 		//mac_address_to_string(addr, &macdsthwsim);
 		//std::cout << "forward to : " << addr << std::endl;
 
-		send_cloned_frame_msg(&macdsthwsim, data, data_len,rate_idx, signal, freq);
+		int retval = send_cloned_frame_msg(&macdsthwsim, data, data_len,rate_idx, signal, freq);
+
+		if(retval == 0)
+			std::cout << "error send cloneddddddddddd" << std::endl ;
+
+	
 			
-	/*	if ((std::memcmp(&framedst, &macaddr, ETH_ALEN) == 0) && (nlh->nlmsg_len != 72)) { // !=56 to avoid ack ack
+		if (((std::memcmp(&framedst, &macaddr, ETH_ALEN) == 0) && (nlh->nlmsg_len != 72)) && retval )  // !=56 to avoid ack ack
+		{
 
 			//std::cout << "framedst == macaddr" << std::endl ;
 			send_ack_to_server(freq, src, &macaddr); // src or famesrc is the same, since we update src with framesrc in process_message
 	
-		}*/
+		}
 	
 	}
 
