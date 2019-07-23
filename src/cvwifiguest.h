@@ -158,6 +158,12 @@ private:
 			struct hwsim_tx_rate *tx_attempts,
 			unsigned long cookie);
 
+	void send_tx_info_frame_nl(struct ether_addr *src, int flags, int sig, 
+                                  unsigned int tx_rates_cnt,
+                                  struct hwsim_tx_rate *tx_rates,
+                                  uint64_t cookie);
+
+
 	/**
 	 * 	\brief  start receiving hwsim frame from vwifi-server loop
 	 */
