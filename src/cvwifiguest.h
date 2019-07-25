@@ -196,7 +196,7 @@ private:
  	*/
 	int send_cloned_frame_msg(struct ether_addr *dst, char *data, int data_len,int rate_idx, int signal, uint32_t freq);
 
-	void send_ack_to_server(uint32_t freq, struct ether_addr *src,struct ether_addr *dst);
+	void send_ack_to_server(uint32_t freq, struct ether_addr *src,struct ether_addr *dst,int rate_idx, int sig);
 
 
 	/**

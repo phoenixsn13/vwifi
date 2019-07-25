@@ -221,6 +221,14 @@ int VWifiGuest::process_messages(struct nl_msg *msg, void *arg)
 		return 1;
 	}
 
+	struct ether_addr *paddr ; 
+	if ((attrs[HWSIM_ATTR_PERM_ADDR])){
+		paddr = (struct ether_addr *)nla_data(attrs[HWSIM_ATTR_PERM_ADDR]);
+		
+		mac_address_to_string(addr, paddr);
+		std::cout << __func__ << " paddr: " << addr << std::endl ;
+
+	}
 	/* we get hwsim mac (id)*/
 	src = (struct ether_addr *)nla_data(attrs[HWSIM_ATTR_ADDR_TRANSMITTER]);
 
@@ -301,7 +309,7 @@ int VWifiGuest::process_messages(struct nl_msg *msg, void *arg)
 	}
 
 
-#ifdef _DEBUG
+//#ifdef _DEBUG
 
 	mac_address_to_string(addr, src);
 	std::cout << __func__ << " src hwsim: " << addr << std::endl ;
@@ -311,7 +319,7 @@ int VWifiGuest::process_messages(struct nl_msg *msg, void *arg)
 	
 	mac_address_to_string(addr, &framedst);
 	std::cout << __func__ << " frame dst: " << addr << std::endl;
-#endif
+//#endif
 
 
 
@@ -498,7 +506,7 @@ int VWifiGuest::send_cloned_frame_msg(struct ether_addr *dst, char *data, int da
 }
 
 
-void VWifiGuest::send_ack_to_server(uint32_t freq, struct ether_addr *src,struct ether_addr *dst)
+void VWifiGuest::send_ack_to_server(uint32_t freq, struct ether_addr *src,struct ether_addr *dst,int rate_idx, int sig)
 {
 	int rc;
 	struct nl_msg *msg;
@@ -508,7 +516,7 @@ void VWifiGuest::send_ack_to_server(uint32_t freq, struct ether_addr *src,struct
 	struct nlmsghdr *nlh;
 
 	/* we dont need to the full 30 bytes of struct ieee80211_hdr */
-	ack_size = 10;
+	ack_size = 16 ; // 10;
 
 	hdr80211 = (struct ieee80211_hdr *) malloc(ack_size);
 	std::memset(hdr80211, 0, ack_size);
@@ -525,10 +533,6 @@ void VWifiGuest::send_ack_to_server(uint32_t freq, struct ether_addr *src,struct
 		return;
 	}
 
-	/* may need to spoof so it loos to welled like it came from
-	 * the hwsim driver on another system? maybe not as long as it
-	 * shows up in a tcpdump
-	 */
 	if (m_family_id < 0){
 	
 		free(hdr80211);
@@ -541,6 +545,8 @@ void VWifiGuest::send_ack_to_server(uint32_t freq, struct ether_addr *src,struct
 	/* set source address */
 	rc = nla_put(msg, HWSIM_ATTR_ADDR_TRANSMITTER,sizeof(struct ether_addr), dst);
 	rc = nla_put(msg, HWSIM_ATTR_FRAME, ack_size,hdr80211);
+	rc = nla_put_u32(msg, HWSIM_ATTR_RX_RATE, rate_idx);
+	rc = nla_put_u32(msg, HWSIM_ATTR_SIGNAL, sig);
 
 	if (freq)
 		rc = nla_put_u32(msg, HWSIM_ATTR_FREQ, freq);
@@ -673,9 +679,10 @@ void VWifiGuest::recv_from_server(){
 	struct ether_addr framesrc;
 	std::memcpy(&framesrc, data + 10, ETH_ALEN);
 
+//	std::cout << "LENNNN : " << nlh->nlmsg_len << std::endl ;
 
-#ifdef _DEBUG
-
+//#ifdef _DEBUG
+       if( nlh->nlmsg_len == 76 ){
 	char addr[18];
 	
 	mac_address_to_string(addr, src);
@@ -686,7 +693,8 @@ void VWifiGuest::recv_from_server(){
 	
 	mac_address_to_string(addr, &framedst);
 	std::cout << "frame dst:" << addr << std::endl;
-#endif
+       }
+//#endif
 
 	std::vector<WirelessDevice> inets = _list_winterfaces.list_devices();
 
@@ -713,11 +721,13 @@ void VWifiGuest::recv_from_server(){
 
 	
 			
-		if (((std::memcmp(&framedst, &macaddr, ETH_ALEN) == 0) && (nlh->nlmsg_len != 72)) && retval )  // !=56 to avoid ack ack
+		if (((std::memcmp(&framedst, &macaddr, ETH_ALEN) == 0) && (nlh->nlmsg_len != 76)) && retval )  // !=56 to avoid ack ack
 		{
-
-			//std::cout << "framedst == macaddr" << std::endl ;
-			send_ack_to_server(freq, src, &macaddr); // src or famesrc is the same, since we update src with framesrc in process_message
+			
+			//char address[18];
+			//mac_address_to_string(address, &macaddr);
+			//std::cout << "framedst == macaddr : " <<  address << std::endl ;
+			send_ack_to_server(freq, src, &macaddr,rate_idx,signal); // src or famesrc is the same, since we update src with framesrc in process_message
 	
 		}
 	
