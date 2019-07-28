@@ -309,7 +309,7 @@ int VWifiGuest::process_messages(struct nl_msg *msg, void *arg)
 	}
 
 
-//#ifdef _DEBUG
+#ifdef _DEBUG
 
 	mac_address_to_string(addr, src);
 	std::cout << __func__ << " src hwsim: " << addr << std::endl ;
@@ -319,7 +319,7 @@ int VWifiGuest::process_messages(struct nl_msg *msg, void *arg)
 	
 	mac_address_to_string(addr, &framedst);
 	std::cout << __func__ << " frame dst: " << addr << std::endl;
-//#endif
+#endif
 
 
 
@@ -681,7 +681,7 @@ void VWifiGuest::recv_from_server(){
 
 //	std::cout << "LENNNN : " << nlh->nlmsg_len << std::endl ;
 
-//#ifdef _DEBUG
+#ifdef _DEBUG
        if( nlh->nlmsg_len == 76 ){
 	char addr[18];
 	
@@ -694,7 +694,7 @@ void VWifiGuest::recv_from_server(){
 	mac_address_to_string(addr, &framedst);
 	std::cout << "frame dst:" << addr << std::endl;
        }
-//#endif
+#endif
 
 	std::vector<WirelessDevice> inets = _list_winterfaces.list_devices();
 
@@ -716,10 +716,6 @@ void VWifiGuest::recv_from_server(){
 
 		int retval = send_cloned_frame_msg(&macdsthwsim, data, data_len,rate_idx, signal, freq);
 
-		if(retval == 0)
-			std::cout << "error send cloneddddddddddd" << std::endl ;
-
-	
 			
 		if (((std::memcmp(&framedst, &macaddr, ETH_ALEN) == 0) && (nlh->nlmsg_len != 76)) && retval )  // !=56 to avoid ack ack
 		{
