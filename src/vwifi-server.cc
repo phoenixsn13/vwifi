@@ -187,6 +187,10 @@ int vwifi_server(const TPort vhost_port, int allowed_count, int allowed_cid[])
 	else
 		cout<<"Packet loss : disable"<<endl;
 
+	cout<<"Allowed cid count: "<<allowed_count<<endl;
+	int cidx;
+	cout<<"Allowed cid list:";for(cidx=0;cidx<allowed_count;cidx++){cout<<allowed_cid[cidx]<<" ";}cout<<endl;
+
 	//add master socket to set
 	scheduler.AddNode(wifiGuestVHostServer);
 	scheduler.AddNode(wifiGuestINETServer);

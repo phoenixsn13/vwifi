@@ -90,7 +90,6 @@ TDescriptor CWifiServer::Accept(int allowed_count, int allowed_cid[])
 				if(allowed_cid[i] == cid)
 				{
 					found = 1;
-					cout<<"Found allowed cid: "<<cid<<endl;
 					break;
 				}
 			}
@@ -111,7 +110,7 @@ TDescriptor CWifiServer::Accept(int allowed_count, int allowed_cid[])
 
 	if(found == 0)
 	{
-		cerr<<"Cid not allowed: "<<cid<<". break"<<endl;
+		cerr<<"Cid "<<cid<<" not allowed, break"<<endl;
 		return 0;
 	}
 	return new_socket;
