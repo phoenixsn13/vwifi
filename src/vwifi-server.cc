@@ -12,6 +12,95 @@ using namespace std;
 
 CDynBuffer Buffer; // Buffer to stock received values
 
+
+void SwitchData(CWifiServer* serverMaster, bool masterSendToOwnClients, CSelect* scheduler)
+{
+	TDescriptor socket;
+
+	int valread;
+	TPower power;
+
+	for ( TIndex i = 0 ; i < serverMaster->GetNumberClient() ; )
+	{
+		socket = (*serverMaster)[i];
+
+		if( ! serverMaster->IsEnable(i) )
+		{
+			//Somebody disconnected
+
+			//Close the socket
+			if( masterSendToOwnClients )
+			{
+				cout<<"Client disconnected : "; serverMaster->ShowInfoWifi(i) ; cout<<endl;
+			}
+			else
+			{	// if masterSendToOwnClients is false, it is surely Spy
+				cout<<"Spy disconnected"<<endl;
+			}
+			serverMaster->CloseClient(i);
+
+			//del master socket to set
+			scheduler->DelNode(socket);
+
+			continue;
+		}
+
+		if( scheduler->DescriptorHasAction(socket) )
+		{
+			//Check if it was for closing , and also read the
+			//incoming message
+
+			// read the power
+			valread = serverMaster->Read( socket , (char*)&power, sizeof(power));
+			if ( valread <= 0 )
+			{
+				//Close the socket
+				if( masterSendToOwnClients )
+				{
+					cout<<"Client disconnected : "; serverMaster->ShowInfoWifi(i) ; cout<<endl;
+				}
+				else
+				{	// if masterSendToOwnClients is false, it is surely Spy
+					cout<<"Spy disconnected"<<endl;
+				}
+				serverMaster->CloseClient(i);
+
+				//del master socket to set
+				scheduler->DelNode(socket);
+
+				continue;
+			}
+
+			// read the data
+			valread = serverMaster->ReadBigData( socket , &Buffer);
+			if ( valread <= 0 )
+			{
+				//Close the socket
+				cout<<"Client disconnected : "; serverMaster->ShowInfoWifi(i) ; cout<<endl;
+				serverMaster->CloseClient(i);
+
+				//del master socket to set
+				scheduler->DelNode(socket);
+
+				continue;
+			}
+
+			if( masterSendToOwnClients )
+			{
+				if( serverMaster->GetNumberClient() > 1 )
+				{
+#ifdef _VERBOSE2
+					cout<<"Server "<<serverMaster->GetPort()<<" forward "<<valread<<" bytes from own client "; serverMaster->ShowInfoWifi(i); cout<<" to "<< serverMaster->GetNumberClient()-1 << " others owns clients" <<endl;
+#endif
+					serverMaster->SendAllOtherClients(i,power,Buffer.GetBuffer(),valread);
+				}
+			}
+		}
+
+		i++;
+	}
+}
+
 void ForwardData(CWifiServer* serverMaster, bool masterSendToOwnClients, CWifiServer* serverSecond, bool serverSecondForwardWithoutLoss, CWifiServer* serverThird, bool serverThirdIsWithoutCoordinate, CSelect* scheduler)
 {
 	TDescriptor socket;
@@ -278,6 +367,7 @@ int vwifi_server(const TPort vhost_port, int allowed_count, int allowed_cid[])
 
 			//else its some IO operation on some other socket
 
+			SwitchData(&wifiGuestVHostServer, true, &scheduler);
 			// ForwardData(&wifiGuestVHostServer, true, &wifiGuestINETServer, false, &wifiSpyServer, true, &scheduler);
 			// ForwardData(&wifiGuestINETServer, true, &wifiGuestVHostServer, false, &wifiSpyServer, true, &scheduler);
 
