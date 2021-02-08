@@ -152,33 +152,33 @@ int vwifi_server(const TPort vhost_port, int allowed_count, int allowed_cid[])
 		exit(EXIT_FAILURE);
 	}
 
-	CWifiServer wifiGuestINETServer(AF_INET);
-	cout<<"CLIENT TCP : ";
-	wifiGuestINETServer.Init(WIFI_CLIENT_PORT_INET);
-	if( ! wifiGuestINETServer.Listen(WIFI_MAX_DECONNECTED_CLIENT) )
-	{
-		cerr<<"Error : wifiGuestINETServer.Listen"<<endl;
-		exit(EXIT_FAILURE);
-	}
+	// CWifiServer wifiGuestINETServer(AF_INET);
+	// cout<<"CLIENT TCP : ";
+	// wifiGuestINETServer.Init(WIFI_CLIENT_PORT_INET);
+	// if( ! wifiGuestINETServer.Listen(WIFI_MAX_DECONNECTED_CLIENT) )
+	// {
+	// 	cerr<<"Error : wifiGuestINETServer.Listen"<<endl;
+	// 	exit(EXIT_FAILURE);
+	// }
 
-	cout<<"SPY : ";
-	CWifiServer wifiSpyServer(AF_INET);
-	wifiSpyServer.SetPacketLoss(false);
-	wifiSpyServer.Init(WIFI_SPY_PORT);
-	if( ! wifiSpyServer.Listen(1) )
-	{
-		cerr<<"Error : wifiSpyServer.Listen"<<endl;
-		exit(EXIT_FAILURE);
-	}
+	// cout<<"SPY : ";
+	// CWifiServer wifiSpyServer(AF_INET);
+	// wifiSpyServer.SetPacketLoss(false);
+	// wifiSpyServer.Init(WIFI_SPY_PORT);
+	// if( ! wifiSpyServer.Listen(1) )
+	// {
+	// 	cerr<<"Error : wifiSpyServer.Listen"<<endl;
+	// 	exit(EXIT_FAILURE);
+	// }
 
-	cout<<"CTRL : ";
-	CCTRLServer ctrlServer(&wifiGuestVHostServer, &wifiGuestINETServer, &wifiSpyServer,&scheduler);
-	ctrlServer.Init(CTRL_PORT);
-	if( ! ctrlServer.Listen() )
-	{
-		cerr<<"Error : ctrlServer.Listen"<<endl;
-		exit(EXIT_FAILURE);
-	}
+	// cout<<"CTRL : ";
+	// CCTRLServer ctrlServer(&wifiGuestVHostServer, &wifiGuestINETServer, &wifiSpyServer,&scheduler);
+	// ctrlServer.Init(CTRL_PORT);
+	// if( ! ctrlServer.Listen() )
+	// {
+	// 	cerr<<"Error : ctrlServer.Listen"<<endl;
+	// 	exit(EXIT_FAILURE);
+	// }
 
 	cout<<"Size of disconnected : "<<WIFI_MAX_DECONNECTED_CLIENT<<endl;
 
@@ -193,9 +193,9 @@ int vwifi_server(const TPort vhost_port, int allowed_count, int allowed_cid[])
 
 	//add master socket to set
 	scheduler.AddNode(wifiGuestVHostServer);
-	scheduler.AddNode(wifiGuestINETServer);
-	scheduler.AddNode(wifiSpyServer);
-	scheduler.AddNode(ctrlServer);
+	// scheduler.AddNode(wifiGuestINETServer);
+	// scheduler.AddNode(wifiSpyServer);
+	// scheduler.AddNode(ctrlServer);
 	while( true )
 	{
 		//wait for an activity on one of the sockets , timeout is NULL ,
@@ -231,57 +231,57 @@ int vwifi_server(const TPort vhost_port, int allowed_count, int allowed_cid[])
 				}
 			}
 
-			if( scheduler.DescriptorHasAction(wifiGuestINETServer) )
-			{
-				socket = wifiGuestINETServer.Accept(allowed_count, allowed_cid);
-				if ( socket == SOCKET_ERROR )
-				{
-					cerr<<"Error : wifiGuestINETServer.Accept"<<endl;
-					exit(EXIT_FAILURE);
-				}
-				if (socket == 0)
-				{
-					wifiGuestINETServer.CloseClient(wifiGuestINETServer.GetNumberClient()-1);
-				}
-				else
-				{
-					//add child sockets to set
-					scheduler.AddNode(socket);
+			// if( scheduler.DescriptorHasAction(wifiGuestINETServer) )
+			// {
+			// 	socket = wifiGuestINETServer.Accept(allowed_count, allowed_cid);
+			// 	if ( socket == SOCKET_ERROR )
+			// 	{
+			// 		cerr<<"Error : wifiGuestINETServer.Accept"<<endl;
+			// 		exit(EXIT_FAILURE);
+			// 	}
+			// 	if (socket == 0)
+			// 	{
+			// 		wifiGuestINETServer.CloseClient(wifiGuestINETServer.GetNumberClient()-1);
+			// 	}
+			// 	else
+			// 	{
+			// 		//add child sockets to set
+			// 		scheduler.AddNode(socket);
 
-					//inform user of socket number - used in send and receive commands
-					cout<<"New connection from Client TCP : "; wifiGuestINETServer.ShowInfoWifi(wifiGuestINETServer.GetNumberClient()-1) ; cout<<endl;
-				}
-			}
+			// 		//inform user of socket number - used in send and receive commands
+			// 		cout<<"New connection from Client TCP : "; wifiGuestINETServer.ShowInfoWifi(wifiGuestINETServer.GetNumberClient()-1) ; cout<<endl;
+			// 	}
+			// }
 
-			if( scheduler.DescriptorHasAction(wifiSpyServer) )
-			{
-				socket = wifiSpyServer.Accept(allowed_count, allowed_cid);
-				if ( socket == SOCKET_ERROR )
-				{
-					cerr<<"Error : wifiSpyServer.Accept"<<endl;
-					exit(EXIT_FAILURE);
-				}
-				if ( socket != 0 )
-				{
-					//add child sockets to set
-					scheduler.AddNode(socket);
+			// if( scheduler.DescriptorHasAction(wifiSpyServer) )
+			// {
+			// 	socket = wifiSpyServer.Accept(allowed_count, allowed_cid);
+			// 	if ( socket == SOCKET_ERROR )
+			// 	{
+			// 		cerr<<"Error : wifiSpyServer.Accept"<<endl;
+			// 		exit(EXIT_FAILURE);
+			// 	}
+			// 	if ( socket != 0 )
+			// 	{
+			// 		//add child sockets to set
+			// 		scheduler.AddNode(socket);
 
-					//inform user of socket number - used in send and receive commands
-					cout<<"New connection from Spy"<<endl;
-				}
-			}
+			// 		//inform user of socket number - used in send and receive commands
+			// 		cout<<"New connection from Spy"<<endl;
+			// 	}
+			// }
 
-			if( scheduler.DescriptorHasAction(ctrlServer) )
-			{
-				ctrlServer.ReceiveOrder();
-			}
+			// if( scheduler.DescriptorHasAction(ctrlServer) )
+			// {
+			// 	ctrlServer.ReceiveOrder();
+			// }
 
 			//else its some IO operation on some other socket
 
-			ForwardData(&wifiGuestVHostServer, true, &wifiGuestINETServer, false, &wifiSpyServer, true, &scheduler);
-			ForwardData(&wifiGuestINETServer, true, &wifiGuestVHostServer, false, &wifiSpyServer, true, &scheduler);
+			// ForwardData(&wifiGuestVHostServer, true, &wifiGuestINETServer, false, &wifiSpyServer, true, &scheduler);
+			// ForwardData(&wifiGuestINETServer, true, &wifiGuestVHostServer, false, &wifiSpyServer, true, &scheduler);
 
-			ForwardData(&wifiSpyServer, false, &wifiGuestVHostServer, true, &wifiGuestINETServer, false, &scheduler);
+			// ForwardData(&wifiSpyServer, false, &wifiGuestVHostServer, true, &wifiGuestINETServer, false, &scheduler);
 
 		}
 	}
