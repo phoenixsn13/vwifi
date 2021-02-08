@@ -136,15 +136,16 @@ void ForwardData(CWifiServer* serverMaster, bool masterSendToOwnClients, CWifiSe
 	}
 }
 
-int vwifi_server()
+int vwifi_server(const TPort vhost_port, int allowed_count, int allowed_cid[])
 {
 	TDescriptor socket;
 
 	CSelect scheduler;
 
 	CWifiServer wifiGuestVHostServer(AF_VSOCK);
+
 	cout<<"CLIENT VHOST : ";
-	wifiGuestVHostServer.Init(WIFI_CLIENT_PORT_VHOST);
+	wifiGuestVHostServer.Init(vhost_port);
 	if( ! wifiGuestVHostServer.Listen(WIFI_MAX_DECONNECTED_CLIENT) )
 	{
 		cerr<<"Error : wifiGuestVHostServer.Listen"<<endl;
@@ -191,7 +192,6 @@ int vwifi_server()
 	scheduler.AddNode(wifiGuestINETServer);
 	scheduler.AddNode(wifiSpyServer);
 	scheduler.AddNode(ctrlServer);
-
 	while( true )
 	{
 		//wait for an activity on one of the sockets , timeout is NULL ,
@@ -207,50 +207,64 @@ int vwifi_server()
 			//then its an incoming connection
 			if( scheduler.DescriptorHasAction(wifiGuestVHostServer) )
 			{
-				socket = wifiGuestVHostServer.Accept();
+				socket = wifiGuestVHostServer.Accept(allowed_count, allowed_cid);
 				if ( socket == SOCKET_ERROR )
 				{
 					cerr<<"Error : wifiGuestVHostServer.Accept"<<endl;
 					exit(EXIT_FAILURE);
 				}
+				if ( socket == 0 )
+				{
+					wifiGuestVHostServer.CloseClient(wifiGuestVHostServer.GetNumberClient()-1);
+				}
+				else
+				{
+					//add child sockets to set
+					scheduler.AddNode(socket);
 
-				//add child sockets to set
-				scheduler.AddNode(socket);
-
-				//inform user of socket number - used in send and receive commands
-				cout<<"New connection from Client VHost : "; wifiGuestVHostServer.ShowInfoWifi(wifiGuestVHostServer.GetNumberClient()-1) ; cout<<endl;
+					//inform user of socket number - used in send and receive commands
+					cout<<"New connection from Client VHost : "; wifiGuestVHostServer.ShowInfoWifi(wifiGuestVHostServer.GetNumberClient()-1) ; cout<<endl;
+				}
 			}
 
 			if( scheduler.DescriptorHasAction(wifiGuestINETServer) )
 			{
-				socket = wifiGuestINETServer.Accept();
+				socket = wifiGuestINETServer.Accept(allowed_count, allowed_cid);
 				if ( socket == SOCKET_ERROR )
 				{
 					cerr<<"Error : wifiGuestINETServer.Accept"<<endl;
 					exit(EXIT_FAILURE);
 				}
+				if (socket == 0)
+				{
+					wifiGuestINETServer.CloseClient(wifiGuestINETServer.GetNumberClient()-1);
+				}
+				else
+				{
+					//add child sockets to set
+					scheduler.AddNode(socket);
 
-				//add child sockets to set
-				scheduler.AddNode(socket);
-
-				//inform user of socket number - used in send and receive commands
-				cout<<"New connection from Client TCP : "; wifiGuestINETServer.ShowInfoWifi(wifiGuestINETServer.GetNumberClient()-1) ; cout<<endl;
+					//inform user of socket number - used in send and receive commands
+					cout<<"New connection from Client TCP : "; wifiGuestINETServer.ShowInfoWifi(wifiGuestINETServer.GetNumberClient()-1) ; cout<<endl;
+				}
 			}
 
 			if( scheduler.DescriptorHasAction(wifiSpyServer) )
 			{
-				socket = wifiSpyServer.Accept();
+				socket = wifiSpyServer.Accept(allowed_count, allowed_cid);
 				if ( socket == SOCKET_ERROR )
 				{
 					cerr<<"Error : wifiSpyServer.Accept"<<endl;
 					exit(EXIT_FAILURE);
 				}
+				if ( socket != 0 )
+				{
+					//add child sockets to set
+					scheduler.AddNode(socket);
 
-				//add child sockets to set
-				scheduler.AddNode(socket);
-
-				//inform user of socket number - used in send and receive commands
-				cout<<"New connection from Spy"<<endl;
+					//inform user of socket number - used in send and receive commands
+					cout<<"New connection from Spy"<<endl;
+				}
 			}
 
 			if( scheduler.DescriptorHasAction(ctrlServer) )
@@ -280,11 +294,18 @@ int main(int argc, char** argv)
 			cout<<"Version : "<<VERSION<<endl;
 			return 0;
 		}
-
-		cerr<<"Error : unknown parameter"<<endl;
-		return 1;
+		const TPort vhost_port = atoi(argv[1]);
+		int allowed_cid[argc - 2];
+		const int allowed_count = argc - 2;
+		int i;
+		for(i=2; i<argc; i++)
+		{
+			allowed_cid[i-2]  = atoi(argv[i]);
+		}
+		return vwifi_server(vhost_port, allowed_count, allowed_cid);
 	}
 
-	return vwifi_server();
+	int allowed_cid[0];
+	return vwifi_server(WIFI_CLIENT_PORT_VHOST, 0, allowed_cid);
 }
 

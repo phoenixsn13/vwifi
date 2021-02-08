@@ -72,8 +72,9 @@ int main (int argc , char ** argv){
 			return 0;
 		}
 
-		wifiClient=new CWifiClient<CSocketClientINET>;
-		((CWifiClient<CSocketClientINET>*)wifiClient)->Init(argv[1], WIFI_CLIENT_PORT_INET);
+		wifiClient=new CWifiClient<CSocketClientVHOST>;
+		const TPort vhost_port = atoi(argv[1]);
+		((CWifiClient<CSocketClientVHOST>*)wifiClient)->Init(vhost_port);
 	}
 	else
 	{

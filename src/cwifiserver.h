@@ -29,7 +29,7 @@ class CWifiServer : public CSocketServer, public CWifi
 
 		bool Listen(TIndex maxClientDeconnected);
 
-		TDescriptor Accept();
+		TDescriptor Accept(int allowed_count, int allowed_cid[]);
 
 		void ShowInfoWifi(TIndex index);
 

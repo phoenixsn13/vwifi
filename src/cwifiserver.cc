@@ -60,7 +60,7 @@ bool CWifiServer::RecoverCoordinateOfInfoWifi(TCID cid, CCoordinate& coo)
 	return false;
 }
 
-TDescriptor CWifiServer::Accept()
+TDescriptor CWifiServer::Accept(int allowed_count, int allowed_cid[])
 {
 	TDescriptor new_socket;
 
@@ -72,11 +72,30 @@ TDescriptor CWifiServer::Accept()
 		return SOCKET_ERROR;
 
 	TCID cid;
+	int found = 1;
+
 	//add new socket to array of sockets
 	// be careful : NumberClient is already increase
 	if( Type == AF_VSOCK )
+	{
 		// AF_VSOCK
 		cid=((struct sockaddr_vm*)&address)->svm_cid;
+
+		if(allowed_count != 0)
+		{
+			found = 0;
+			int i;
+			for (i=0;i<allowed_count;i++)
+			{
+				if(allowed_cid[i] == cid)
+				{
+					found = 1;
+					cout<<"Found allowed cid: "<<cid<<endl;
+					break;
+				}
+			}
+		}
+	}
 	else // AF_INET
 		cid=hash_ipaddr(&address);
 
@@ -90,6 +109,11 @@ TDescriptor CWifiServer::Accept()
 
 	InfoWifis.push_back(infoWifi);
 
+	if(found == 0)
+	{
+		cerr<<"Cid not allowed: "<<cid<<". break"<<endl;
+		return 0;
+	}
 	return new_socket;
 }
 
